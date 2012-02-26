@@ -17,7 +17,6 @@
 #include <linux/kernel.h>
 #include <linux/init.h>
 #include <linux/i2c.h>
-#include <linux/i2c-id.h>
 #include <linux/slab.h>
 #include <linux/string.h>
 #include <linux/init.h>
@@ -25,9 +24,10 @@
 #include <linux/clk.h>
 
 #include <mach/hardware.h>
+#include <mach/spica_rev02.h>
 
 #include <plat/gpio-cfg.h>
-#include <plat/egpio.h>
+//#include <plat/egpio.h>
 
 #include "s3c_camif.h"
 
@@ -111,9 +111,15 @@ reset_type:
 
 /* #define S5K4CA_ID	0x78 */
 
-static unsigned short s5k4ca_normal_i2c[] = { (S5K4CA_ID >> 1), I2C_CLIENT_END };
-static unsigned short s5k4ca_ignore[] = { I2C_CLIENT_END };
-static unsigned short s5k4ca_probe[] = { I2C_CLIENT_END };
+//static unsigned short s5k4ca_normal_i2c[] = { (S5K4CA_ID >> 1), I2C_CLIENT_END };
+//static unsigned short s5k4ca_ignore[] = { I2C_CLIENT_END };
+//static unsigned short s5k4ca_probe[] = { I2C_CLIENT_END };
+
+struct i2c_device_id s5k4ca_idtable[] = {
+	{ "s5k4ca", 0x78 },
+	{}
+};
+MODULE_DEVICE_TABLE(i2c, s5k4ca_idtable);
 
 static int af_mode = 2;
 static int previous_scene_mode = -1;
@@ -121,12 +127,14 @@ static unsigned short lux_value = 0;
 static int first_init_end = 0;
 static int af_mode_autoset_initailized = 0;
 
+#if 0
 static struct i2c_client_address_data s5k4ca_addr_data =
 {
     .normal_i2c = s5k4ca_normal_i2c,
     .ignore		= s5k4ca_ignore,
     .probe		= s5k4ca_probe,
 };
+#endif
 
 static int s5k4ca_sensor_read(struct i2c_client *client,
                               unsigned short subaddr, unsigned short *data)
@@ -196,6 +204,64 @@ static void s5k4ca_sensor_get_id(struct i2c_client *client)
     (printk("[CAM-SENSOR] =Sensor ID(0x%04x) is %s!\n", id, (id == 0x4CA4) ? "Valid" : "Invalid"));
     __TRACE_CAM_SENSOR(printk("[CAM-SENSOR] -%s\n", __func__));
 }
+
+#define I2C_CAM_DIS do {	\
+	s3c_gpio_cfgpin(GPIO_I2C1_SCL, S3C_GPIO_INPUT);			\
+	s3c_gpio_cfgpin(GPIO_I2C1_SDA, S3C_GPIO_INPUT);			\
+	s3c_gpio_setpull(GPIO_I2C1_SCL, S3C_GPIO_PULL_DOWN);		\
+	s3c_gpio_setpull(GPIO_I2C1_SDA, S3C_GPIO_PULL_DOWN);		\
+} while (0)
+
+#define	MCAM_RST_DIS do {	\
+	/* MCAM RST Low */	\
+	if (gpio_is_valid(GPIO_MCAM_RST_N)) {	\
+		gpio_direction_output(GPIO_MCAM_RST_N, GPIO_LEVEL_LOW);	\
+	}	\
+	s3c_gpio_setpull(GPIO_MCAM_RST_N, S3C_GPIO_PULL_NONE);	\
+} while (0)
+
+#define	VCAM_RST_DIS do { } while (0)
+
+#define	CAM_PWR_DIS do {	\
+	/* CAM PWR Low */	\
+	if (gpio_is_valid(GPIO_CAM_EN)) {	\
+		gpio_direction_output(GPIO_CAM_EN, GPIO_LEVEL_LOW);	\
+	}	\
+	s3c_gpio_setpull(GPIO_CAM_EN, S3C_GPIO_PULL_NONE);	\
+} while (0)
+
+#define AF_PWR_DIS do {} while (0)
+#define AF_PWR_EN do {} while (0)
+
+#define	MCAM_STB_DIS do {	\
+	/* CAM_3M STB Low */	\
+	if (gpio_is_valid(GPIO_CAM_3M_STBY_N)) {	\
+		gpio_direction_output(GPIO_CAM_3M_STBY_N, GPIO_LEVEL_LOW);	\
+	}	\
+	s3c_gpio_setpull(GPIO_CAM_3M_STBY_N, S3C_GPIO_PULL_NONE);	\
+} while (0)
+
+#define	VCAM_STB_DIS do { } while (0)
+
+#define	MCAM_STB_EN do {	\
+	/* MCAM STB High */	\
+	gpio_set_value(GPIO_CAM_3M_STBY_N, GPIO_LEVEL_HIGH);	\
+} while (0)
+
+#define	CAM_PWR_EN do {	\
+	gpio_direction_output(GPIO_CAM_EN, GPIO_LEVEL_HIGH);	\
+} while (0)
+
+#define	MCAM_RST_EN do {	\
+	gpio_direction_output(GPIO_MCAM_RST_N, GPIO_LEVEL_HIGH);	\
+} while (0)
+
+#define I2C_CAM_EN do {		\
+	s3c_gpio_cfgpin(GPIO_I2C1_SCL, S3C_GPIO_SFN(GPIO_I2C1_SCL_AF));	\
+	s3c_gpio_cfgpin(GPIO_I2C1_SDA, S3C_GPIO_SFN(GPIO_I2C1_SDA_AF));	\
+	s3c_gpio_setpull(GPIO_I2C1_SCL, S3C_GPIO_PULL_NONE);		\
+	s3c_gpio_setpull(GPIO_I2C1_SDA, S3C_GPIO_PULL_NONE);		\
+} while (0)
 
 static void s5k4ca_sensor_gpio_init(void)
 {
@@ -303,10 +369,10 @@ static int sensor_init(struct i2c_client *client)
     return 0;
 }
 
-static int s5k4cagx_attach(struct i2c_adapter *adap, int addr, int kind)
+static int s5k4cagx_probe(struct i2c_client *client, const struct i2c_device_id *id)
 {
     (printk("[CAM-SENSOR] +%s\n", __func__));
-    struct i2c_client *c;
+/*    struct i2c_client *c;
 
     c = kmalloc(sizeof(*c), GFP_KERNEL);
     if (!c)
@@ -318,7 +384,9 @@ static int s5k4cagx_attach(struct i2c_adapter *adap, int addr, int kind)
     c->addr = addr;
     c->adapter = adap;
     c->driver = &s5k4ca_driver;
-    s5k4ca_data.sensor = c;
+*/
+    s5k4ca_data.sensor = client;
+	i2c_set_clientdata(client, &s5k4ca_data);
 
     (printk("[CAM-SENSOR] -%s\n", __func__));
 #ifdef LOCAL_CONFIG_S5K4CA_I2C_TEST
@@ -328,20 +396,23 @@ static int s5k4cagx_attach(struct i2c_adapter *adap, int addr, int kind)
 
     return 0;
 #else
-    return i2c_attach_client(c);
+    //return i2c_attach_client(c);
+	return 0;
 #endif
 }
 
+#if 0
 static int s5k4ca_sensor_attach_adapter(struct i2c_adapter *adap)
 {
     __TRACE_CAM_SENSOR(printk("[CAM-SENSOR] =%s\n", __func__));
     return i2c_probe(adap, &s5k4ca_addr_data, s5k4cagx_attach);
 }
+#endif
 
-static int s5k4ca_sensor_detach(struct i2c_client *client)
+static int s5k4ca_remove(struct i2c_client *client)
 {
     (printk("[CAM-SENSOR] +%s\n", __func__));
-    i2c_detach_client(client);
+    //i2c_detach_client(client);
     (printk("[CAM-SENSOR] -%s\n", __func__));
     return 0;
 }
@@ -1330,12 +1401,14 @@ static int s5k4ca_sensor_command(struct i2c_client *client, unsigned int cmd, vo
 static struct i2c_driver s5k4ca_driver =
 {
     .driver = {
-        .name = "s5k4ca",
+	.name = "s5k4ca",
     },
-    .id = S5K4CA_ID,
-     .attach_adapter = s5k4ca_sensor_attach_adapter,
-      .detach_client = s5k4ca_sensor_detach,
-       .command = s5k4ca_sensor_command
+     //.attach_adapter = s5k4ca_sensor_attach_adapter,
+     //.detach_client = s5k4ca_sensor_detach,
+	.id_table = s5k4ca_idtable,
+	.command = s5k4ca_sensor_command,
+    .probe =  s5k4cagx_probe,
+    .remove = s5k4ca_remove,
               };
 
 

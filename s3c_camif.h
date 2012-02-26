@@ -23,12 +23,10 @@
 #define __S3C_CAMIF_H_
 
 #ifdef __KERNEL__
-#include <linux/videodev.h>
 #include <linux/videodev2.h>
 #include <asm/types.h>
 #include <linux/i2c.h>
-#include <linux/video_decoder.h>
-#include <plat/reserved_mem.h>
+#include <asm-generic/sizes.h>
 #endif	/* __KERNEL__ */
 
 #if !defined(O_NONCAP)
@@ -74,6 +72,20 @@
 #define FIMC_PREVIEW_INDEX		1
 
 #define BURST_ERR			1
+
+//copy from /arch/arm/match-s3c64xx/mach-gt_5700.c
+#define DRAM_END_ADDR			(PHYS_OFFSET + PHYS_SIZE)
+#define RESERVED_PMEM_END_ADDR		(DRAM_END_ADDR)
+
+#define RESERVED_MEM_CMM		(SZ_2M + SZ_1M)
+#define RESERVED_MEM_MFC		(SZ_4M + SZ_2M)
+#define RESERVED_PMEM_PICTURE       (SZ_4M + SZ_2M)
+
+#define CMM_RESERVED_MEM_START		(RESERVED_PMEM_END_ADDR \
+							- RESERVED_MEM_CMM)
+#define MFC_RESERVED_MEM_START		(CMM_RESERVED_MEM_START \
+							- RESERVED_MEM_MFC)
+#define PICTURE_RESERVED_PMEM_START	(MFC_RESERVED_MEM_START)
 
 #if defined (CONFIG_MACH_BONANZA)
 #define CAMERA_MEM_SIZE       RESERVED_PMEM_PICTURE_SIZE // RESERVED_MEM_CAMERA

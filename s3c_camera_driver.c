@@ -54,7 +54,7 @@
 #include <plat/regs-clock.h>
 #include <plat/regs-gpio.h>
 #include <plat/regs-camif.h>
-#include <plat/s3c64xx-dvfs.h>
+//#include <plat/s3c64xx-dvfs.h>
 #include <plat/power-clock-domain.h>
 #include <plat/pm.h>
 
@@ -74,7 +74,7 @@
 
 /// debugging print
 //#define __TRACE_CAMERA_DRV__
-//#define __TRACE_FULL_CAMERA_DRV__
+#define __TRACE_FULL_CAMERA_DRV__
 
 #if defined(__TRACE_FULL_CAMERA_DRV__)
 	#define __TRACE_CAMERA_DRV(s) (s)
@@ -2310,7 +2310,8 @@ long s3c_camif_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 #endif
 
 	default:	/* For v4l compatability */
-		ret = v4l_compat_translate_ioctl(file, cmd, (void *) arg, (v4l2_kioctl)s3c_camif_ioctl);
+	//	ret = v4l_compat_translate_ioctl(file, cmd, (void *) arg, (v4l2_kioctl)s3c_camif_ioctl);
+		printk(KERN_ERR "%s: Unsupport v4l2 ioctl command!", __FUNCTION__);
 		break;
 	} /* End of Switch  */
 
@@ -2380,7 +2381,7 @@ int s3c_camif_open(struct file *file)
 		up((struct semaphore *) &cfg->cis->lock);
 	}
 #ifdef CONFIG_CPU_FREQ
-	set_dvfs_level(0);
+	//set_dvfs_level(0);
 #endif /* CONFIG_CPU_FREQ */
 	err = s3c_cam_exclusive_open();
 	cfg->cis->user++;
@@ -2430,7 +2431,7 @@ int s3c_camif_release(struct file *file)
 	s3c_cam_exclusive_release();
 
 #ifdef CONFIG_CPU_FREQ
-	set_dvfs_level(1);
+	//set_dvfs_level(1);
 #endif /* CONFIG_CPU_FREQ */
 
 	if (cfg->cis->sensor == NULL)
@@ -2625,7 +2626,7 @@ struct v4l2_file_operations camif_p_fops = {
 void camif_vdev_release (struct video_device *vdev) {
 
 	__TRACE_CAMERA_DRV(printk("[CAM-DRV] +camif_vdev_release\n"));
-	kfree(vdev);
+	//kfree(vdev);
 	__TRACE_CAMERA_DRV(printk("[CAM-DRV] -camif_vdev_release\n"));
 }
 
@@ -2819,8 +2820,8 @@ static int s3c_camif_probe(struct platform_device *pdev)
 	}
 
 #if defined(CONFIG_CPU_S3C6400) || defined(CONFIG_CPU_S3C6410)
-	cam_clock = clk_get(&pdev->dev, "sclk_cam");
-	cam_hclk = clk_get(&pdev->dev, "hclk_camera");
+	cam_clock = clk_get(&pdev->dev, "camera");
+	cam_hclk = clk_get(&pdev->dev, "camif");
 #elif defined(CONFIG_CPU_S3C2443) || defined(CONFIG_CPU_S3C2416) || defined(CONFIG_CPU_S3C2450)
 	cam_clock = clk_get(&pdev->dev, "camif-upll");
 #else
@@ -2901,7 +2902,7 @@ static struct platform_driver s3c_camif_driver =
 	.probe		= s3c_camif_probe,
 	.remove		= s3c_camif_remove,
 	.driver		= {
-		.name	= "s3c-camif",
+		.name	= "s3c-fimc",
 		.owner	= THIS_MODULE,
 	},
 };

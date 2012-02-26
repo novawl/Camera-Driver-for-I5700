@@ -28,7 +28,6 @@
 #include <linux/slab.h>
 #include <linux/vmalloc.h>
 #include <linux/wait.h>
-#include <linux/videodev.h>
 #include <linux/semaphore.h>
 
 #include <asm/io.h>
@@ -37,6 +36,7 @@
 
 #include <mach/map.h>
 #include <mach/hardware.h>
+#include <mach/spica_rev02.h>
 
 #include <plat/gpio-cfg.h>
 #include <plat/regs-camif.h>
